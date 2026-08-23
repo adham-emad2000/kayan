@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import ScrollToTop from "./components/ScrollToTop"; // مكون التمرير للأعلى
+import ScrollToTop from "./components/ScrollToTop";
 
 // صفحات المصادقة (Auth)
 import RegisterStudent from "./pages/auth/RegisterStudent";
@@ -17,12 +17,13 @@ import Profile from "./pages/student/Profile";
 
 // صفحات المعلمين
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
+import TeacherPending from "./pages/teacher/TeacherPending"; // 👈 استيراد صفحة الانتظار ودفع الاشتراك
 import AddCourse from "./pages/teacher/AddCourse";
 import EditCourse from "./pages/teacher/EditCourse";
 import TeacherCourses from "./pages/teacher/TeacherCourses";
 import TeacherStudents from "./pages/teacher/TeacherStudents";
 import TeacherEarnings from "./pages/teacher/TeacherEarnings";
-import TeacherCourseStudents from "./pages/teacher/Teachercoursestudents"; // إحصائيات الطلاب/الواجبات/الامتحانات لكل كورس
+import TeacherCourseStudents from "./pages/teacher/Teachercoursestudents";
 
 // صفحات الأدمن
 import AdminRequests from "./pages/admin/AdminRequests";
@@ -33,8 +34,8 @@ import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
 import Layout from "./components/layout/Layout";
 import Courses from "./pages/general/Courses";
 import Teachers from "./pages/general/Teachers";
-import Terms from "./pages/Terms"; // 👈 صفحة الشروط والأحكام
-import Privacy from "./pages/Privacy"; // 👈 صفحة سياسة الخصوصية
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import { useAuth } from "./context/AuthContext";
 
 // أقسام الصفحة الرئيسية
@@ -57,6 +58,13 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   if (!currentUser) {
     return <Navigate to="/login" replace />;
+  }
+
+  // 👈 إذا كان المدرس غير معتمد ومسجل دخول، يتم توجيهه لصفحة الدفع والانتظار حصرياً
+  if (userData?.role === "teacher" && userData?.isApproved === false) {
+    if (window.location.pathname !== "/teacher/pending") {
+      return <Navigate to="/teacher/pending" replace />;
+    }
   }
 
   if (allowedRoles && !allowedRoles.includes(userData?.role)) {
@@ -83,8 +91,13 @@ const PublicRoute = ({ children }) => {
   }
 
   if (currentUser) {
-    if (userData?.role === "teacher")
-      return <Navigate to="/teacher/dashboard" replace />;
+    if (userData?.role === "teacher") {
+      return userData?.isApproved === false ? (
+        <Navigate to="/teacher/pending" replace />
+      ) : (
+        <Navigate to="/teacher/dashboard" replace />
+      );
+    }
     if (userData?.role === "admin")
       return <Navigate to="/admin/requests" replace />;
     return <Navigate to="/dashboard" replace />;
@@ -93,7 +106,6 @@ const PublicRoute = ({ children }) => {
   return children;
 };
 
-// البوابة التسويقية للموقع
 const Home = () => {
   const { currentUser, userData, loading } = useAuth();
 
@@ -106,8 +118,13 @@ const Home = () => {
   }
 
   if (currentUser) {
-    if (userData?.role === "teacher")
-      return <Navigate to="/teacher/dashboard" replace />;
+    if (userData?.role === "teacher") {
+      return userData?.isApproved === false ? (
+        <Navigate to="/teacher/pending" replace />
+      ) : (
+        <Navigate to="/teacher/dashboard" replace />
+      );
+    }
     if (userData?.role === "admin")
       return <Navigate to="/admin/requests" replace />;
     return <Navigate to="/dashboard" replace />;
@@ -129,13 +146,11 @@ function App() {
       <ScrollToTop />
       <Routes>
         <Route element={<Layout />}>
-          {/* مسارات عامة للجميع */}
           <Route path="/" element={<Home />} />
           <Route path="/courses" element={<Courses />} />
           <Route path="/teachers" element={<Teachers />} />
           <Route path="/course/:id" element={<CourseDetails />} />
 
-          {/* 👈 مسارات صفحات الأمان والقانونية */}
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
 
@@ -174,6 +189,14 @@ function App() {
           />
 
           {/* مسارات المعلمين */}
+          <Route
+            path="/teacher/pending"
+            element={
+              <ProtectedRoute allowedRoles={["teacher"]}>
+                <TeacherPending />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/teacher/dashboard"
             element={
@@ -258,7 +281,6 @@ function App() {
           />
         </Route>
 
-        {/* مسارات الـ Authentication */}
         <Route
           path="/register"
           element={
@@ -292,7 +314,6 @@ function App() {
           }
         />
 
-        {/* إعادة التوجيه للمسارات غير المعروفة */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

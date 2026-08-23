@@ -42,8 +42,6 @@ const RegisterTeacher = () => {
     }
   };
 
-  // كانت [0-2,5] بالغلط بتسمح بحرف الفاصلة "," نفسه كرقم صحيح ضمن الرقم.
-  // الصح [0125] عشان يقبل بس الأرقام 0 أو 1 أو 2 أو 5.
   const validateEgyptianPhone = (phone) => {
     return /^01[0125][0-9]{8}$/.test(phone);
   };
@@ -112,16 +110,7 @@ const RegisterTeacher = () => {
       );
       const user = userCredential.user;
 
-      // مهم: لازم يتكتب في "teachers" مش "users"، لأن ده الـ collection
-      // اللي AuthContext وباقي التطبيق بيفحصوا فيه عشان يحددوا إن اليوزر مدرس.
-      // كتابته في "users" كانت بتخلي المدرس الجديد "غير معروف" للنظام
-      // بمجرد التسجيل رغم إن حسابه اتعمل فعليًا في Firebase Auth.
-      //
-      // totalEarnings و lockedBalance لازم يتكتبوا من هنا بقيمة 0 من ساعة
-      // التسجيل — عشان أي مدرس جديد ميقعش في مشكلة "Missing or insufficient
-      // permissions" وقت أول محاولة سحب أرباح، لأن الـ Firestore rule بتاعت
-      // تحديث مستند المدرس بتتحقق من قيمة lockedBalance الحالية، ولو الحقل
-      // مش موجود أصلاً بترفض العملية بالكامل.
+      // حفظ بيانات المدرس في collection "teachers" مع شروط الاعتماد
       await setDoc(doc(db, "teachers", user.uid), {
         uid: user.uid,
         fullName: formData.fullName,
@@ -130,13 +119,16 @@ const RegisterTeacher = () => {
         phone: formData.phone,
         experience: formData.experience,
         role: "teacher",
+        isApproved: false, // 👈 بانتظار موافقة الأدمن ودفع الاشتراك
+        subscriptionStatus: "pending_payment",
+        receiptUrl: "",
         totalEarnings: 0,
         lockedBalance: 0,
         createdAt: new Date().toISOString(),
       });
 
-      alert("تم تسجيل حساب المدرس بنجاح! أهلاً بك في هيئة تدريس منصة كيان.");
-      navigate("/teacher/dashboard");
+      alert("تم تسجيل حساب المدرس بنجاح! يرجى سداد رسوم تفعيل الحساب.");
+      navigate("/teacher/pending"); // 👈 التوجه لصفحة دفع الاشتراك ورفع الإيصال
     } catch (error) {
       console.error("Firebase Error:", error.code);
 
@@ -162,7 +154,6 @@ const RegisterTeacher = () => {
       dir="rtl"
     >
       <div className="w-full max-w-lg bg-white rounded-[2.5rem] shadow-xl shadow-blue-600/5 border-2 border-blue-100 p-8 sm:p-10">
-        {/* الهيدر */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 mb-3 shadow-sm border border-blue-100">
             <Award className="w-8 h-8" />
@@ -179,7 +170,6 @@ const RegisterTeacher = () => {
           </p>
         </div>
 
-        {/* مؤشر الخطوات */}
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
           <span className="text-xs font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
             الخطوة {step} من 2
@@ -198,7 +188,6 @@ const RegisterTeacher = () => {
           </div>
         </div>
 
-        {/* الخطوة الأولى */}
         {step === 1 ? (
           <form onSubmit={handleNextStep} className="space-y-4">
             <div>
@@ -328,7 +317,6 @@ const RegisterTeacher = () => {
               </p>
             )}
 
-            {/* شروط كلمة المرور */}
             <div className="bg-blue-50/50 p-3.5 rounded-2xl border border-blue-100 space-y-1 text-[11px] font-bold">
               <p className="text-slate-700 mb-1">شروط كلمة المرور:</p>
               <div
@@ -374,7 +362,6 @@ const RegisterTeacher = () => {
             </button>
           </form>
         ) : (
-          /* الخطوة الثانية */
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-black text-slate-700 mb-1">
