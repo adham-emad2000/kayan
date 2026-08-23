@@ -38,7 +38,7 @@ const AddCourse = () => {
     title: "",
     description: "",
     price: "",
-    grade: "الصف الأول الثانوي",
+    grade: "", // 👈 حقل نصي حر للمدرس
     subject: userData?.subject || "الفيزياء",
     startDate: "",
     endDate: "",
@@ -299,7 +299,7 @@ const AddCourse = () => {
           }),
       );
 
-      // 👈 حساب السعر الأساسي للمدرس والسعر النهائي للطلاب مضاف إليه 10%
+      // حساب السعر الأساسي للمدرس والسعر النهائي للطلاب مضاف إليه 10%
       const teacherBasePrice = Number(courseData.price) || 0;
       const finalStudentPrice = Math.round(teacherBasePrice * 1.1);
 
@@ -307,9 +307,9 @@ const AddCourse = () => {
       const courseRef = await addDoc(collection(db, "courses"), {
         title: courseData.title,
         description: courseData.description,
-        price: finalStudentPrice, // السعر النهائي الذي يظهر للطلاب ويُحاسبون عليه
-        basePrice: teacherBasePrice, // السعر الأساسي الخاص بالمدرس
-        grade: courseData.grade,
+        price: finalStudentPrice,
+        basePrice: teacherBasePrice,
+        grade: courseData.grade || "عام", // حفظ النص الذي كتبه المدرس
         subject: courseData.subject,
         startDate: courseData.startDate || "",
         endDate: courseData.endDate || "",
@@ -462,34 +462,26 @@ const AddCourse = () => {
                   placeholder="100"
                   className="w-full bg-slate-50 border-2 border-slate-200 focus:border-blue-600 rounded-2xl py-4 px-5 text-sm font-bold text-slate-800 focus:outline-none"
                 />
-                {/* 👈 التوضيح الإداري للمدرس */}
                 <p className="text-[11px] text-slate-500 mt-1.5 font-bold">
                   * سيظهر السعر للطلاب مضافاً إليه نسبة خدمات منصة كيان الإدارية
                   (10%). (مثال: 100 ستظهر للطلاب 110).
                 </p>
               </div>
 
+              {/* 👈 تم تحويل الصف الدراسي إلى Input نصي حر */}
               <div>
                 <label className="block text-sm font-black text-slate-700 mb-2">
-                  الصف الدراسي *
+                  الصف الدراسي / الفئة المستهدفة *
                 </label>
-                <select
+                <input
+                  type="text"
                   name="grade"
+                  required
                   value={courseData.grade}
                   onChange={handleCourseChange}
-                  className="w-full bg-slate-50 border-2 border-slate-200 focus:border-blue-600 rounded-2xl py-4 px-4 text-sm font-bold text-slate-800 focus:outline-none cursor-pointer"
-                >
-                  <option value="الصف الأول الثانوي">الصف الأول الثانوي</option>
-                  <option value="الصف الثاني الثانوي">
-                    الصف الثاني الثانوي
-                  </option>
-                  <option value="الصف الثالث الثانوي">
-                    الصف الثالث الثانوي
-                  </option>
-                  <option value="الفرقة الجامعية الأولى">
-                    الفرقة الجامعية الأولى
-                  </option>
-                </select>
+                  placeholder="مثال: الصف الثالث الثانوي"
+                  className="w-full bg-slate-50 border-2 border-slate-200 focus:border-blue-600 rounded-2xl py-4 px-5 text-sm font-bold text-slate-800 focus:outline-none"
+                />
               </div>
 
               <div className="sm:col-span-2">

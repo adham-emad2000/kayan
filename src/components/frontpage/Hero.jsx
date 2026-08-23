@@ -61,7 +61,7 @@ const Hero = () => {
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-800 leading-[1.3] mb-6">
-              متشتتش نفسك.. <br />
+              <br />
               طريقك للـ{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-blue-500">
                 الدرجة النهائية
@@ -97,11 +97,9 @@ const Hero = () => {
             <div className="mt-10 flex items-center gap-8 text-slate-500 font-semibold text-sm">
               <div className="flex items-center gap-2 bg-white/50 backdrop-blur-sm px-3 py-1.5 rounded-lg">
                 <Users className="w-5 h-5 text-blue-600" />
-                <span>+10,000 طالب</span>
               </div>
               <div className="flex items-center gap-2 bg-white/50 backdrop-blur-sm px-3 py-1.5 rounded-lg">
                 <Star className="w-5 h-5 text-yellow-400" />
-                <span>تقييم 4.9/5</span>
               </div>
             </div>
           </div>
