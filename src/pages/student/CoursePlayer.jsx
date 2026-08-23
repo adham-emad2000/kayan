@@ -11,9 +11,11 @@ import {
   Sparkles,
   Video,
   X,
-  Clock,
   Award,
   Lock,
+  Clock,
+  AlertTriangle,
+  RotateCcw,
 } from "lucide-react";
 import { db } from "../../firebase";
 import {
@@ -82,9 +84,15 @@ const CoursePlayer = () => {
   });
 
   const [userAnswers, setUserAnswers] = useState({});
-  const [timeLeft, setTimeLeft] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [score, setScore] = useState(0);
+
+  // حالة الحفظ الفعلي في Firestore، منفصلة عن حالة "الطالب دوس تسليم"
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+
+  // التايمر الخاص بالامتحان فقط (الواجب من غير تايمر)
+  const [timeLeft, setTimeLeft] = useState(null);
 
   // 1. جلب الكورس والتحقق من الاشتراك والدروس من المستند السري (private/lessons)
   useEffect(() => {
@@ -233,23 +241,36 @@ const CoursePlayer = () => {
     checkHomeworkSubmissionStatus();
   }, [currentUser, activeLesson, id]);
 
-  // تايمر الامتحان
+  // 4. عد تنازلي لتايمر الامتحان فقط، وتسليم تلقائي لما الوقت يخلص
   useEffect(() => {
-    let timer;
-    if (modalState.isOpen && timeLeft > 0 && !isSubmitted) {
-      timer = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            handleSubmitActivity();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (
+      !modalState.isOpen ||
+      modalState.type !== "quiz" ||
+      isSubmitted ||
+      timeLeft === null
+    ) {
+      return;
     }
+
+    if (timeLeft <= 0) {
+      handleSubmitActivity();
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => (prev !== null ? prev - 1 : prev));
+    }, 1000);
+
     return () => clearInterval(timer);
-  }, [modalState.isOpen, timeLeft, isSubmitted]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalState.isOpen, modalState.type, isSubmitted, timeLeft]);
+
+  const formatTime = (seconds) => {
+    if (seconds === null) return "";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
 
   const openActivityModal = (type) => {
     if (type === "quiz" && hasSubmittedQuiz) return;
@@ -257,13 +278,23 @@ const CoursePlayer = () => {
     setUserAnswers({});
     setIsSubmitted(false);
     setScore(0);
+    setSaveError(null);
+    setIsSaving(false);
 
     if (type === "quiz") {
       const minutes = activeLesson?.quizData?.timerMinutes || 20;
       setTimeLeft(minutes * 60);
+    } else {
+      setTimeLeft(null);
     }
 
     setModalState({ isOpen: true, type });
+  };
+
+  const closeModal = () => {
+    setModalState({ isOpen: false, type: null });
+    setTimeLeft(null);
+    setSaveError(null);
   };
 
   const handleSubmitActivity = async () => {
@@ -282,55 +313,52 @@ const CoursePlayer = () => {
       }
     });
 
-    setScore(correctCount);
-    setIsSubmitted(true);
-
     const submissionId = `${currentUser.uid}_${id}_${activeLesson.title}_${activityType}`;
     const collectionName =
       activityType === "quiz" ? "quizResults" : "homeworkSubmissions";
 
-    if (activityType === "quiz" && !hasSubmittedQuiz) {
-      try {
-        await setDoc(doc(db, collectionName, submissionId), {
-          studentId: currentUser.uid,
-          studentName: userData?.fullName || "طالب",
-          teacherId: course?.teacherId || null,
-          courseId: id,
-          courseTitle: course?.title || "كورس تعليمي",
-          subject: course?.subject || "الفيزياء",
-          lessonTitle: activeLesson.title,
-          score: correctCount,
-          totalMarks: questions.length,
-          userAnswers: userAnswers,
-          submittedAt: new Date().toISOString(),
-        });
+    // لو المستخدم عنده تسليم قبل كده لأي سبب (سباق تنفيذ)، منمنعوش يشوف نتيجته القديمة
+    const alreadyDone =
+      activityType === "quiz" ? hasSubmittedQuiz : hasSubmittedHomework;
+    if (alreadyDone) return;
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      await setDoc(doc(db, collectionName, submissionId), {
+        studentId: currentUser.uid,
+        studentName: userData?.fullName || "طالب",
+        teacherId: course?.teacherId || null,
+        courseId: id,
+        courseTitle: course?.title || "كورس تعليمي",
+        subject: course?.subject || "الفيزياء",
+        lessonTitle: activeLesson.title,
+        score: correctCount,
+        totalMarks: questions.length,
+        userAnswers: userAnswers,
+        submittedAt: new Date().toISOString(),
+      });
+
+      // شاشة النجاح متظهرش غير لما الحفظ في Firestore ينجح فعلاً
+      setScore(correctCount);
+      setIsSubmitted(true);
+      setTimeLeft(null);
+
+      if (activityType === "quiz") {
         setHasSubmittedQuiz(true);
         setPreviousScore(correctCount);
-      } catch (error) {
-        console.error("Error saving quiz result:", error);
-      }
-    }
-
-    if (activityType === "homework" && !hasSubmittedHomework) {
-      try {
-        await setDoc(doc(db, collectionName, submissionId), {
-          studentId: currentUser.uid,
-          studentName: userData?.fullName || "طالب",
-          teacherId: course?.teacherId || null,
-          courseId: id,
-          courseTitle: course?.title || "كورس تعليمي",
-          subject: course?.subject || "الفيزياء",
-          lessonTitle: activeLesson.title,
-          score: correctCount,
-          totalMarks: questions.length,
-          userAnswers: userAnswers,
-          submittedAt: new Date().toISOString(),
-        });
+      } else {
         setHasSubmittedHomework(true);
         setPreviousHomeworkScore(correctCount);
-      } catch (error) {
-        console.error("Error saving homework submission:", error);
       }
+    } catch (error) {
+      console.error(`Error saving ${activityType} result:`, error);
+      setSaveError(
+        "حصل خطأ أثناء حفظ إجاباتك، تأكد من الاتصال بالإنترنت وحاول تاني.",
+      );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -606,22 +634,27 @@ const CoursePlayer = () => {
                 </div>
               </div>
 
-              {modalState.type === "quiz" && !isSubmitted && (
-                <div className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 px-4 py-2 rounded-2xl text-purple-300 font-mono font-black text-xs">
-                  <Clock className="w-4 h-4 animate-pulse" />
-                  <span>
-                    {Math.floor(timeLeft / 60)}:
-                    {String(timeLeft % 60).padStart(2, "0")}
-                  </span>
-                </div>
-              )}
-
-              <button
-                onClick={() => setModalState({ isOpen: false, type: null })}
-                className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-rose-500 text-slate-400 flex items-center justify-center cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-3">
+                {modalState.type === "quiz" &&
+                  !isSubmitted &&
+                  timeLeft !== null && (
+                    <div
+                      className={`px-4 py-2 rounded-xl font-black text-xs flex items-center gap-2 ${
+                        timeLeft <= 30
+                          ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                          : "bg-slate-800 text-slate-300 border border-slate-700"
+                      }`}
+                    >
+                      <Clock className="w-4 h-4" /> {formatTime(timeLeft)}
+                    </div>
+                  )}
+                <button
+                  onClick={closeModal}
+                  className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-rose-500 text-slate-400 flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <div className="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1">
@@ -675,6 +708,15 @@ const CoursePlayer = () => {
                       </div>
                     </div>
                   ))}
+
+                  {saveError && (
+                    <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-5 flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                      <p className="text-xs font-bold text-rose-300 leading-relaxed">
+                        {saveError}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-12 space-y-6">
@@ -697,7 +739,7 @@ const CoursePlayer = () => {
                     </p>
                   </div>
                   <button
-                    onClick={() => setModalState({ isOpen: false, type: null })}
+                    onClick={closeModal}
                     className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3.5 rounded-2xl font-black text-xs cursor-pointer shadow-lg"
                   >
                     إغلاق والعودة للحصة
@@ -709,16 +751,30 @@ const CoursePlayer = () => {
             {!isSubmitted && (
               <div className="p-5 sm:p-6 border-t border-slate-800 bg-slate-950/60 flex items-center justify-end gap-3">
                 <button
-                  onClick={() => setModalState({ isOpen: false, type: null })}
-                  className="px-5 py-3 rounded-xl text-xs font-black text-slate-400 hover:bg-slate-800 cursor-pointer"
+                  onClick={closeModal}
+                  disabled={isSaving}
+                  className="px-5 py-3 rounded-xl text-xs font-black text-slate-400 hover:bg-slate-800 cursor-pointer disabled:opacity-50"
                 >
                   إغلاق
                 </button>
                 <button
                   onClick={handleSubmitActivity}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3.5 rounded-2xl font-black text-xs shadow-lg cursor-pointer"
+                  disabled={isSaving}
+                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white px-8 py-3.5 rounded-2xl font-black text-xs shadow-lg cursor-pointer flex items-center gap-2"
                 >
-                  تسليم الإجابات وإنهاء الاختبار 🚀
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>جاري الحفظ...</span>
+                    </>
+                  ) : saveError ? (
+                    <>
+                      <RotateCcw className="w-4 h-4" />
+                      <span>إعادة المحاولة</span>
+                    </>
+                  ) : (
+                    <span>تسليم الإجابات وإنهاء الاختبار 🚀</span>
+                  )}
                 </button>
               </div>
             )}
