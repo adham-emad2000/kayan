@@ -22,7 +22,7 @@ import EditCourse from "./pages/teacher/EditCourse";
 import TeacherCourses from "./pages/teacher/TeacherCourses";
 import TeacherStudents from "./pages/teacher/TeacherStudents";
 import TeacherEarnings from "./pages/teacher/TeacherEarnings";
-import TeacherCourseStudents from "./pages/teacher/TeacherCourseStudents"; // إحصائيات الطلاب/الواجبات/الامتحانات لكل كورس
+import TeacherCourseStudents from "./pages/teacher/Teachercoursestudents"; // إحصائيات الطلاب/الواجبات/الامتحانات لكل كورس
 
 // صفحات الأدمن
 import AdminRequests from "./pages/admin/AdminRequests";
