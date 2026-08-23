@@ -12,7 +12,7 @@ import {
 const Hero = () => {
   return (
     // ضفنا هنا خلفية الـ Grid (الشبكة) الشفافة جداً عشان تكسر الملل
-    <div className="relative overflow-hidden bg-[#00000024] min-h-[calc(100vh-80px)] flex items-center bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:24px_24px]">
+    <div className="relative overflow-hidden bg-[#fff] min-h-[calc(100vh-80px)] flex items-center bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:24px_24px]">
       {/* ستايل الأنيميشن الجديد بتاع الخلفية والكروت */}
       <style>
         {`

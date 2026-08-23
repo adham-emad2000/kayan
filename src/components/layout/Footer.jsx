@@ -103,7 +103,7 @@ const Footer = () => {
                   to="/courses"
                   className="text-[#9AA3B5] hover:text-white transition-colors"
                 >
-                  الصف الأول الثانوي
+                  المرحلة الابتدائية
                 </Link>
               </li>
               <li>
@@ -111,7 +111,7 @@ const Footer = () => {
                   to="/courses"
                   className="text-[#9AA3B5] hover:text-white transition-colors"
                 >
-                  الصف الثاني الثانوي
+                  المرحلة الاعدادية
                 </Link>
               </li>
               <li>
@@ -119,7 +119,7 @@ const Footer = () => {
                   to="/courses"
                   className="text-[#9AA3B5] hover:text-white transition-colors"
                 >
-                  الصف الثالث الثانوي
+                  المرحلة الثانوية
                 </Link>
               </li>
             </ul>
